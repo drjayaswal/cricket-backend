@@ -4,7 +4,11 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import matchRoutes from "./routes/matchRoutes.js";
+// import {matchScores} from "./routes/matchScores.js";
+import matchScores from "./routes/matchScores.js";
 import helmet from "helmet";
+// import {MatchScore} from "../Frontend/src/components/Dashboard/CurrentMatches/MatchScore.jsx";
+
 
 dotenv.config();
 
@@ -38,6 +42,7 @@ mongoose
 // Define Routes
 app.use("/auth", authRoutes);
 app.use("/matches", matchRoutes);
+app.use("/match-scores", matchScores)
 
 // Root Route
 app.get("/", (req, res) => {
@@ -45,5 +50,5 @@ app.get("/", (req, res) => {
 });
 
 // Start the Server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -6,7 +6,7 @@ const router = express.Router();
 
 // RapidAPI configuration
 const rapidAPIHeaders = {
-  'x-rapidapi-key': '542980bff5msh6b93ddf55d7c8dcp1fc793jsnd79e90c12106',
+  'x-rapidapi-key': 'fe35977544msh0cef5652cddd32ap163190jsn1022d13469e7',
   'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com'
 };
 
