@@ -142,7 +142,7 @@ router.get("/:matchId", async (req, res) => {
       const timeDifference = currentTime - lastUpdated;
       
       // If data is older than 30 seconds, update it in the background
-      if (timeDifference > 30000) {
+      if (timeDifference > 1500) {
         // Update in background, don't wait for response
         fetchMatchScore(matchId).catch(err => 
           console.error(`Background update failed for match ${matchId}:`, err.message)
@@ -177,6 +177,18 @@ router.get("/:matchId", async (req, res) => {
       .status(500)
       .json({ message: "Error fetching match score", error: error.message });
   }
+
+  cron.schedule("*/5 * * * *", async () => {
+    console.log("Updating scores for live matches...");
+    const liveMatches = await MatchSchedule.find({ isMatchComplete: false });
+  
+    for (const match of liveMatches) {
+      await fetchMatchScore(match.matchId);
+    }
+  
+    console.log("Live match scores updated.");
+  });
+
 });
 
 // Route to get all stored match scores

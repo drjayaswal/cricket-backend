@@ -17,6 +17,8 @@ router.get('/fetch-and-store-all', async (req, res) => {
     const response = await axios.get('https://cricbuzz-cricket.p.rapidapi.com/schedule/v1/all', {
       headers: rapidAPIHeaders
     });
+    console.log(response.data);
+    
 
     // Remove any existing match schedules to avoid duplicates
     await MatchSchedule.deleteMany({});
