@@ -19,7 +19,7 @@ const twilioClient = twilio(accountSid, authToken);
 
 // Send OTP
 router.post("/send-otp", async (req, res) => {
-  const { mobile } = req.body;
+  const { name,mobile } = req.body;
 
   
   
@@ -33,7 +33,7 @@ router.post("/send-otp", async (req, res) => {
     }
 
     if (!user) {
-      user = new User({ mobile });
+      user = new User({name, mobile });
     }
 
     user.otp = otp;
@@ -234,6 +234,8 @@ router.post("/change-password", async (req, res) => {
     res.json({ message: "Server error" });
   }
 });
+
+
 
 
 
