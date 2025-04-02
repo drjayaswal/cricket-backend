@@ -1,12 +1,14 @@
 import express from 'express';
 import { MatchSchedule } from '../models/MatchSchedule.js';
 import axios from 'axios';
+import cron from 'node-cron';
+import dotenv from 'dotenv';
 
 const router = express.Router();
 
 // RapidAPI configuration
 const rapidAPIHeaders = {
-  'x-rapidapi-key': 'fe35977544msh0cef5652cddd32ap163190jsn1022d13469e7',
+  'x-rapidapi-key': process.env.CRICKET_API,
   'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com'
 };
 
@@ -54,6 +56,8 @@ router.get('/fetch-and-store-all', async (req, res) => {
     });
   }
 });
+
+
 
 // Route to get the count of stored matches
 router.get('/matches-count', async (req, res) => {

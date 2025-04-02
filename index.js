@@ -4,10 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import matchRoutes from "./routes/matchRoutes.js";
-// import {matchScores} from "./routes/matchScores.js";
 import matchScores from "./routes/matchScores.js";
 import helmet from "helmet";
-// import {MatchScore} from "../Frontend/src/components/Dashboard/CurrentMatches/MatchScore.jsx";
 
 
 dotenv.config();

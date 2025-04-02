@@ -203,16 +203,5 @@ router.get("/all-scores", async (req, res) => {
   }
 });
 
-// Schedule to auto-update match scores every 5 minutes
-cron.schedule("*/5 * * * *", async () => {
-  console.log("Auto-updating match scores...");
-  const storedMatches = await MatchSchedule.find({});
-
-  for (const match of storedMatches) {
-    await fetchMatchScore(match.matchId);
-  }
-
-  console.log("Match scores updated.");
-});
 
 export default router;
