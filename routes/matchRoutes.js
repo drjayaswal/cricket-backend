@@ -15,22 +15,28 @@ const rapidAPIHeaders = {
 // Route to fetch and store all matches
 router.get('/fetch-and-store-all', async (req, res) => {
   try {
-    // Fetch all matches from Cricbuzz API
+    await fetchAndStoreAllMatches();
+    res.status(200).json({ message: 'Matches fetched and stored successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error occurred', error: error.message });
+  }
+});
+
+const fetchAndStoreAllMatches = async () => {
+  try {
     const response = await axios.get('https://cricbuzz-cricket.p.rapidapi.com/schedule/v1/all', {
       headers: rapidAPIHeaders
     });
-    console.log(response.data);
-    
 
-    // Remove any existing match schedules to avoid duplicates
+    // Remove existing schedules
     await MatchSchedule.deleteMany({});
 
-    // Process and store only the schedule-related entries
+    // Filter valid entries
     const scheduleEntries = response.data.matchScheduleMap.filter(
       entry => entry.scheduleAdWrapper && entry.scheduleAdWrapper.matchScheduleList
     );
 
-    // Store processed schedule entries
+    // Store them
     const storedSchedules = await MatchSchedule.create(
       scheduleEntries.map(entry => ({
         date: entry.scheduleAdWrapper.date,
@@ -39,24 +45,17 @@ router.get('/fetch-and-store-all', async (req, res) => {
       }))
     );
 
-    res.status(200).json({
-      message: 'All matches fetched and stored successfully',
-      totalMatchesStored: storedSchedules.length,
-      processedEntries: scheduleEntries.length
-    });
+    console.log(`✅ ${storedSchedules.length} match schedules stored successfully.`);
   } catch (error) {
-    console.error('Error fetching and storing matches:', error);
-    
-    res.status(500).json({ 
-      message: 'Failed to fetch and store matches',
-      error: {
-        message: error.message,
-        details: error.response ? error.response.data : 'No additional error details'
-      }
-    });
+    console.error('❌ Error fetching and storing matches:', error.message);
   }
-});
+};
 
+// Schedule to run at 12:05 PM every day
+cron.schedule('5 0 * * *', () => {
+  console.log('⏰ Running scheduled job to fetch and store matches...');
+  fetchAndStoreAllMatches();
+});
 
 
 // Route to get the count of stored matches

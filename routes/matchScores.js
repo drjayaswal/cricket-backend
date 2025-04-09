@@ -2,11 +2,12 @@ import express from "express";
 import { MatchScore } from "../models/MatchScore.js";
 import { MatchSchedule } from "../models/MatchSchedule.js";
 import axios from "axios";
-import cron from "node-cron";
-import dotenv from 'dotenv'
+import dotenv from "dotenv";
+// import { io } from "../index.js";
+import { getIO } from "../SocketService/socket.js";
 
 const router = express.Router();
-dotenv.config()
+dotenv.config();
 
 // RapidAPI configuration
 const rapidAPIHeaders = {
@@ -15,94 +16,146 @@ const rapidAPIHeaders = {
 };
 
 // Function to fetch match scores
-
 const fetchMatchScore = async (matchId) => {
   try {
+    const io = getIO();
     const response = await axios.get(
-      `https://cricbuzz-cricket.p.rapidapi.com/mcenter/v1/${matchId}/scard`,
+      `https://cricbuzz-cricket.p.rapidapi.com/mcenter/v1/${matchId}/hscard`,
       { headers: rapidAPIHeaders }
     );
 
     const matchData = response.data;
+    
     if (!matchData) return null;
 
     // Extract scorecard data for both teams
-    const scorecard = matchData.scorecard || [];
+    const scorecard = matchData.scoreCard || [];
     
+
     // Process data for both innings
-    const processedInnings = scorecard.map(innings => ({
+    const processedInnings = scorecard.map((innings) => ({
       inningsId: innings.inningsId,
-      batTeamName: innings.batTeamName,
-      batTeamSName: innings.batTeamSName,
-      score: innings.score || 0,
-      wickets: innings.wickets || 0,
-      overs: innings.overs || "0.0",
-      runRate: innings.runRate || "0.00",
-      ballNbr: innings.ballNbr,
-      rpb: innings.rpb,
-      batsmen: innings.batsman?.map(bat => ({
-        id: bat.id,
-        name: bat.name,
-        nickName: bat.nickName,
+      batTeamName: innings.batTeamDetails.batTeamName,
+      batTeamSName: innings.batTeamDetails.batTeamShortName,
+      bowlTeamName: innings.bowlTeamDetails.bowlTeamName,
+      bowlTeamSName: innings.bowlTeamDetails.bowlTeamShortName,
+      score: innings.scoreDetails.runs || 0,
+      wickets: innings.scoreDetails.wickets || 0,
+      overs: innings.scoreDetails.overs || "0.0",
+      runRate: innings.scoreDetails.runRate || "0.00",
+      ballNbr: innings.scoreDetails.ballNbr,
+      rpb: innings.scoreDetails.runsPerBall,
+      isDeclared: innings.scoreDetails.isDeclared || false,
+      isFollowOn: innings.scoreDetails.isFollowOn || false,
+      revisedOvers: innings.scoreDetails.revisedOvers || 0,
+
+      batsmen: Object.values(innings.batTeamDetails.batsmenData).map((bat) => ({
+        id: bat.batId,
+        name: bat.batName,
+        nickName: bat.batShortName,
         balls: bat.balls || 0,
         runs: bat.runs || 0,
         fours: bat.fours || 0,
         sixes: bat.sixes || 0,
-        strkRate: bat.strkRate || "0.00",
-        outDec: bat.outDec || "",
+        dots: bat.dots || 0,
+        ones: bat.ones || 0,
+        twos: bat.twos || 0,
+        threes: bat.threes || 0,
+        fives: bat.fives || 0,
+        boundaries: bat.boundaries || 0,
+        minutes: bat.mins || 0,
+        strikeRate: bat.strikeRate || "0.00",
+        outDesc: bat.outDesc || "not out",
+        bowlerId: bat.bowlerId || 0,
+        fielderId1: bat.fielderId1 || 0,
+        fielderId2: bat.fielderId2 || 0,
+        fielderId3: bat.fielderId3 || 0,
+        wicketCode: bat.wicketCode || "",
         isCaptain: bat.isCaptain || false,
-        isKeeper: bat.isKeeper || false
-      })) || [],
-      bowlers: innings.bowler?.map(bowl => ({
-        id: bowl.id,
-        name: bowl.name,
-        nickName: bowl.nickName,
-        overs: bowl.overs || "0.0",
-        maidens: bowl.maidens || 0,
-        wickets: bowl.wickets || 0,
-        runs: bowl.runs || 0,
-        economy: bowl.economy || "0.00",
-        balls: bowl.balls || 0
-      })) || [],
+        isKeeper: bat.isKeeper || false,
+        isOverseas: bat.isOverseas || false,
+        inMatchChange: bat.inMatchChange || "",
+        playingXIChange: bat.playingXIChange || "",
+      })),
+
+      bowlers: Object.values(innings.bowlTeamDetails.bowlersData).map(
+        (bowl) => ({
+          id: bowl.bowlerId,
+          name: bowl.bowlName,
+          nickName: bowl.bowlShortName,
+          overs: bowl.overs || "0.0",
+          maidens: bowl.maidens || 0,
+          wickets: bowl.wickets || 0,
+          runs: bowl.runs || 0,
+          economy: bowl.economy || "0.00",
+          balls: bowl.balls || 0,
+          dots: bowl.dots || 0,
+          noBalls: bowl.no_balls || 0,
+          wides: bowl.wides || 0,
+          runsPerBall: bowl.runsPerBall || 0,
+          isCaptain: bowl.isCaptain || false,
+          isKeeper: bowl.isKeeper || false,
+          isOverseas: bowl.isOverseas || false,
+          inMatchChange: bowl.inMatchChange || "",
+          playingXIChange: bowl.playingXIChange || "",
+        })
+      ),
+
       extras: {
-        legByes: innings.extras?.legByes || 0,
-        byes: innings.extras?.byes || 0,
-        wides: innings.extras?.wides || 0,
-        noBalls: innings.extras?.noBalls || 0,
-        total: innings.extras?.total || 0
+        legByes: innings.extrasData.legByes || 0,
+        byes: innings.extrasData.byes || 0,
+        wides: innings.extrasData.wides || 0,
+        noBalls: innings.extrasData.noBalls || 0,
+        penalty: innings.extrasData.penalty || 0,
+        total: innings.extrasData.total || 0,
       },
-      fow: innings.fow?.fow?.map(fall => ({
-        batsmanId: fall.batsmanId,
-        batsmanName: fall.batsmanName,
-        overNbr: fall.overNbr,
-        runs: fall.runs,
-        ballNbr: fall.ballNbr
-      })) || [],
-      partnership: innings.partnership?.partnership?.map(p => ({
+
+      wickets: Object.values(innings.wicketsData).map((fall) => ({
+        batsmanId: fall.batId,
+        batsmanName: fall.batName,
+        wicketNumber: fall.wktNbr,
+        overNumber: fall.wktOver,
+        runs: fall.wktRuns,
+        ballNumber: fall.ballNbr,
+      })),
+
+      partnerships: Object.values(innings.partnershipsData).map((p) => ({
         bat1Id: p.bat1Id,
         bat1Name: p.bat1Name,
         bat1Runs: p.bat1Runs || 0,
-        bat1Balls: p.bat1Balls || 0,
+        bat1Balls: p.bat1balls || 0,
+        bat1Dots: p.bat1dots || 0,
         bat1Ones: p.bat1Ones || 0,
         bat1Twos: p.bat1Twos || 0,
         bat1Threes: p.bat1Threes || 0,
+        bat1Fours: p.bat1fours || 0,
+        bat1Fives: p.bat1Fives || 0,
+        bat1Sixes: p.bat1sixes || 0,
         bat1Boundaries: p.bat1Boundaries || 0,
-        bat1fours: p.bat1fours || 0,
-        bat1sixes: p.bat1sixes || 0,
+
         bat2Id: p.bat2Id,
         bat2Name: p.bat2Name,
         bat2Runs: p.bat2Runs || 0,
-        bat2Balls: p.bat2Balls || 0,
+        bat2Balls: p.bat2balls || 0,
+        bat2Dots: p.bat2dots || 0,
         bat2Ones: p.bat2Ones || 0,
         bat2Twos: p.bat2Twos || 0,
         bat2Threes: p.bat2Threes || 0,
+        bat2Fours: p.bat2fours || 0,
+        bat2Fives: p.bat2Fives || 0,
+        bat2Sixes: p.bat2sixes || 0,
         bat2Boundaries: p.bat2Boundaries || 0,
-        bat2fours: p.bat2fours || 0,
-        bat2sixes: p.bat2sixes || 0,
+
         totalRuns: p.totalRuns || 0,
-        totalBalls: p.totalBalls || 0
-      })) || []
+        totalBalls: p.totalBalls || 0,
+      })),
+
+      // Power Play data if available
+      powerPlayData: innings.ppData || {},
     }));
+
+    // console.log(processedInnings);
+    
 
     const newMatchScore = {
       matchId,
@@ -114,10 +167,13 @@ const fetchMatchScore = async (matchId) => {
 
     // Store in database - use findOneAndUpdate with new:true to return the updated document
     const storedMatchScore = await MatchScore.findOneAndUpdate(
-      { matchId }, 
-      newMatchScore, 
+      { matchId },
+      newMatchScore,
       { upsert: true, new: true }
     );
+
+    io.to(matchId).emit("scoreUpdate", storedMatchScore);
+    console.log(`Broadcasting update for match ${matchId}`);
 
     return storedMatchScore;
   } catch (error) {
@@ -126,70 +182,6 @@ const fetchMatchScore = async (matchId) => {
   }
 };
 
-// Route to fetch and store match score
-router.get("/:matchId", async (req, res) => {
-  const { matchId } = req.params;
-
-  try {
-    // First check if we have the data in the database
-    let matchScore = await MatchScore.findOne({ matchId });
-    
-    // If data exists in the database
-    if (matchScore) {
-      // Check if the data is fresh enough (less than 30 seconds old)
-      const lastUpdated = new Date(matchScore.responseLastUpdated || 0);
-      const currentTime = new Date();
-      const timeDifference = currentTime - lastUpdated;
-      
-      // If data is older than 30 seconds, update it in the background
-      if (timeDifference > 1500) {
-        // Update in background, don't wait for response
-        fetchMatchScore(matchId).catch(err => 
-          console.error(`Background update failed for match ${matchId}:`, err.message)
-        );
-      }
-      
-      return res.status(200).json({
-        message: "Match score fetched from database",
-        matchScore,
-        fromCache: true
-      });
-    }
-    
-    // If no data in DB, fetch from API
-    await fetchMatchScore(matchId);
-    
-    // Then retrieve the stored data from database to ensure we're sending
-    // exactly what's in the database
-    matchScore = await MatchScore.findOne({ matchId });
-    
-    if (!matchScore) {
-      return res.status(404).json({ message: "Match score not found" });
-    }
-
-    res.status(200).json({
-      message: "Match score fetched and stored successfully",
-      matchScore,
-      fromCache: false
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching match score", error: error.message });
-  }
-
-  cron.schedule("*/5 * * * *", async () => {
-    console.log("Updating scores for live matches...");
-    const liveMatches = await MatchSchedule.find({ isMatchComplete: false });
-  
-    for (const match of liveMatches) {
-      await fetchMatchScore(match.matchId);
-    }
-  
-    console.log("Live match scores updated.");
-  });
-
-});
 
 // Route to get all stored match scores
 router.get("/all-scores", async (req, res) => {
@@ -203,5 +195,135 @@ router.get("/all-scores", async (req, res) => {
   }
 });
 
+const activeMatches = new Map(); // Map<matchId, {interval, subscribers}>
+
+export function setupSocketConnections() {
+  try {
+    const io = getIO();
+
+    io.on("connection", (socket) => {
+      console.log("Client connected:", socket.id);
+      
+      // Keep track of which matches this socket is subscribed to
+      socket.subscribedMatches = new Set(); // Attach to socket object directly
+
+      socket.on("subscribeMatch", async (match) => {
+        const matchId = match.matchId
+        console.log(`Client ${socket.id} subscribed to match ${matchId}`);
+      
+        socket.join(matchId);
+        socket.subscribedMatches.add(matchId);
+
+        await fetchMatchScore(matchId);
+      
+        const matchData = await MatchScore.findOne({ matchId });
+      
+        if (!match) {
+          console.log(`No match found with ID: ${matchId}`);
+          return;
+        }
+      
+        // Always send initial data (could be pre-match info too)
+        socket.emit("scoreUpdate", matchData);
+      
+        const now = new Date();
+        const matchStart = new Date(match.startDate);
+      
+        // If match is complete, don't do anything further
+        if (match.isMatchComplete) {
+          console.log(`Match ${matchId} is complete. Not starting interval.`);
+          return;
+        }
+      
+        // If match hasn't started yet, schedule it
+        if (matchStart > now) {
+          const msUntilStart = matchStart.getTime() - now.getTime();
+          console.log(`Match ${matchId} will start in ${msUntilStart / (1000*60)}m`);
+      
+          setTimeout(() => {
+            // Double-check match hasn't completed before starting interval
+            MatchScore.findOne({ matchId }).then((latestMatch) => {
+              if (latestMatch && !latestMatch.isMatchComplete) {
+                if (!activeMatches.has(matchId)) {
+                  const interval = setInterval(() => {
+                    fetchMatchScore(matchId);
+                  }, 1500);
+                  activeMatches.set(matchId, { interval, subscribers: 1 });
+                  console.log(`Interval started for future match ${matchId}`);
+                }
+              }
+            });
+          }, msUntilStart);
+      
+          return;
+        }
+      
+        // Match is already live – start fetching now
+        if (!activeMatches.has(matchId)) {
+          const interval = setInterval(() => {
+            fetchMatchScore(matchId);
+          }, 1500);
+          activeMatches.set(matchId, { interval, subscribers: 1 });
+          console.log(`Interval started for live match ${matchId}`);
+        } else {
+          const matchData = activeMatches.get(matchId);
+          matchData.subscribers += 1;
+          activeMatches.set(matchId, matchData);
+          console.log(`Match ${matchId} now has ${matchData.subscribers} subscribers`);
+        }
+      });
+        
+      
+      // Handle unsubscribe (if you have this functionality)
+      socket.on("unsubscribeMatch", (matchId) => {
+        handleUnsubscribe(socket, matchId);
+      });
+
+      // Cleanup on disconnect
+      socket.on("disconnect", () => {
+        console.log(`Client ${socket.id} disconnected`);
+        
+        // Clean up all subscriptions for this socket
+        if (socket.subscribedMatches) {
+          for (const matchId of socket.subscribedMatches) {
+            handleUnsubscribe(socket, matchId);
+          }
+        }
+      });
+    });
+    
+    // Helper function to handle unsubscribing
+    function handleUnsubscribe(socket, matchId) {
+      // Remove from room
+      socket.leave(matchId);
+      
+      // Remove from tracking set
+      if (socket.subscribedMatches) {
+        socket.subscribedMatches.delete(matchId);
+      }
+      
+      // Decrement subscribers and possibly clean up interval
+      if (activeMatches.has(matchId)) {
+        const matchData = activeMatches.get(matchId);
+        matchData.subscribers -= 1;
+        
+        // If no more subscribers, clear the interval
+        if (matchData.subscribers <= 0) {
+          console.log(`Clearing interval for match ${matchId} - no more subscribers`);
+          clearInterval(matchData.interval);
+          activeMatches.delete(matchId);
+        } else {
+          // Update the subscriber count
+          activeMatches.set(matchId, matchData);
+          console.log(`Match ${matchId} now has ${matchData.subscribers} subscribers`);
+        }
+      }
+    }
+
+    console.log("Socket connections setup complete");
+  } catch (error) {
+    console.error("Error setting up socket connections:", error);
+  }
+}
 
 export default router;

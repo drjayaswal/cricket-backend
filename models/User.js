@@ -7,9 +7,35 @@ const UserSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   password: { type: String },
 
-  googleId: { type: String, unique: true, sparse: true }, 
+  googleId: { type: String, unique: true, sparse: true },
   email: { type: String, unique: true, sparse: true },
+
+  profileImage: { type: String },
+  amount: { type: String, default: 0 },
+  // User Portfolio Schema
+  portfolio: [
+    {
+      playerId: { type: String }, // Reference to the player
+      playerName:{type:String},
+      team: { type: String }, // Team of the player
+      initialPrice:{type:String},
+      transactions: [
+        {
+          type: { type: String, enum: ["buy", "sell"] }, // Transaction type
+          quantity: { type: Number }, // Number of stocks bought/sold
+          price: { type: Number }, // Price per stock at transaction time
+          timestamp: { type: Date, default: Date.now }, // When the transaction occurred
+          runs: { type: Number }, // Player's runs at transaction time
+        },
+      ],
+      currentHoldings: { type: Number }, // Current number of stocks held
+      averageBuyPrice: { type: Number }, // Average price of stocks purchased
+      initialInvestment: { type: Number }, // Total money invested initially
+      currentValue: { type: Number }, // Current value of holdings
+      profit: { type: Number }, // Current profit/loss
+    },
+  ],
 });
 
 const User = mongoose.model("User", UserSchema);
-export default User
+export default User;
