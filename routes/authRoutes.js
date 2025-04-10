@@ -32,7 +32,7 @@ router.post("/send-otp", async (req, res) => {
     if (!user) {
       user = new User({ name, mobile });
     }
-
+    user.name = name;
     user.otp = otp;
     await user.save();
 

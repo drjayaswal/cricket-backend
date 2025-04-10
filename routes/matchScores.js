@@ -154,7 +154,6 @@ const fetchMatchScore = async (matchId) => {
       powerPlayData: innings.ppData || {},
     }));
 
-    // console.log(processedInnings);
     
 
     const newMatchScore = {
@@ -164,13 +163,15 @@ const fetchMatchScore = async (matchId) => {
       responseLastUpdated: new Date(), // Ensure this is a Date object
       innings: processedInnings,
     };
-
+    
     // Store in database - use findOneAndUpdate with new:true to return the updated document
     const storedMatchScore = await MatchScore.findOneAndUpdate(
       { matchId },
       newMatchScore,
       { upsert: true, new: true }
     );
+
+    
 
     io.to(matchId).emit("scoreUpdate", storedMatchScore);
     console.log(`Broadcasting update for match ${matchId}`);

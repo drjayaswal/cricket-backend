@@ -19,7 +19,7 @@ router.post("/set-portfolio", authMiddleware, async(req, res) => {
         }
         
         // Get portfolio data from request body
-        const { playerId,playerName, team,initialPrice, price, quantity, runs } = req.body;
+        const { matchId,playerId,playerName, team,initialPrice, price, quantity, runs } = req.body;
         
         // Validate required fields
         if (!playerId || !team || price === undefined || quantity === undefined) {
@@ -67,6 +67,7 @@ router.post("/set-portfolio", authMiddleware, async(req, res) => {
         } else {
             // Add new portfolio entry
             user.portfolio.push({
+                matchId,
                 playerId,
                 playerName,
                 team,
