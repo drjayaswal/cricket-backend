@@ -7,7 +7,6 @@ import http from "http";
 import { initializeSocket } from "./SocketService/socket.js";
 import { setupSocketConnections } from "./routes/matchScores.js";
 
-
 dotenv.config();
 
 const app = express();
@@ -32,26 +31,29 @@ app.use(
 
 // Connect to MongoDB
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://Erfan:ERFAN123AALAM@erfan.1vy9lat.mongodb.net/Enrolledusers?retryWrites=true&w=majority&appName=Erfan";
+const MONGO_URI =
+  process.env.MONGO_URI ||
+  "mongodb+srv://Erfan:ERFAN123AALAM@erfan.1vy9lat.mongodb.net/Enrolledusers?retryWrites=true&w=majority&appName=Erfan";
 
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error("MongoDB Connection Error:", err));
 
-  // Import routes after initializing socket.io
+// Import routes after initializing socket.io
 import authRoutes from "./routes/authRoutes.js";
 import matchRoutes from "./routes/matchRoutes.js";
 import matchScores from "./routes/matchScores.js";
-import uploadRoutes from "./routes/uploadRoutes.js"
-import portfolioRoute from "./routes/portfolioRoute.js"
+import uploadRoutes from "./routes/uploadRoutes.js";
+import portfolioRoute from "./routes/portfolioRoute.js";
+import { startTrackingUserPortfolioMatches } from "./MatchPortfolioTracker/MatchPortfolioTracker.js";
 
 // Define Routes
 app.use("/auth", authRoutes);
 app.use("/matches", matchRoutes);
-app.use("/match-scores", matchScores)
-app.use("/api", uploadRoutes)
-app.use("/portfolio",portfolioRoute)
+app.use("/match-scores", matchScores);
+app.use("/api", uploadRoutes);
+app.use("/portfolio", portfolioRoute);
 
 // Root Route
 app.get("/", (req, res) => {
@@ -62,4 +64,7 @@ setupSocketConnections();
 
 // Start the Server
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  startTrackingUserPortfolioMatches();
+  console.log(`Server running on port ${PORT}`);
+});

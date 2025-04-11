@@ -1,6 +1,7 @@
 import express from "express";
 import { MatchScore } from "../models/MatchScore.js";
 import { MatchSchedule } from "../models/MatchSchedule.js";
+import User from "../models/User.js";
 import axios from "axios";
 import dotenv from "dotenv";
 // import { io } from "../index.js";
@@ -16,7 +17,7 @@ const rapidAPIHeaders = {
 };
 
 // Function to fetch match scores
-const fetchMatchScore = async (matchId) => {
+export const fetchMatchScore = async (matchId) => {
   try {
     const io = getIO();
     const response = await axios.get(
@@ -154,7 +155,17 @@ const fetchMatchScore = async (matchId) => {
       powerPlayData: innings.ppData || {},
     }));
 
-    
+    const stored = await MatchScore.findOne({ matchId });
+
+    processedInnings.forEach((inn) => {
+      inn.batsmen.forEach((bat) => {
+        const previous = stored?.innings?.flatMap(i => i.batsmen)?.find(b => b.id === bat.id);
+
+        if (previous && bat.dots < previous.dots) {
+          bat.dots = previous.dots;
+        }
+      });
+    });    
 
     const newMatchScore = {
       matchId,
@@ -164,6 +175,7 @@ const fetchMatchScore = async (matchId) => {
       innings: processedInnings,
     };
     
+
     // Store in database - use findOneAndUpdate with new:true to return the updated document
     const storedMatchScore = await MatchScore.findOneAndUpdate(
       { matchId },
@@ -187,12 +199,17 @@ const fetchMatchScore = async (matchId) => {
 // Route to get all stored match scores
 router.get("/all-scores", async (req, res) => {
   try {
-    const matchScores = await MatchScore.find({});
-    res.status(200).json({ message: "All stored match scores", matchScores });
+    const users = await User.find({ "portfolio.0": { $exists: true } });
+    const matchIds = new Set();
+
+    users.forEach((user) => {
+      user.portfolio.forEach((p) => matchIds.add(p.matchId));
+    });
+
+    const matchScores = await MatchScore.find({ matchId: { $in: [...matchIds] } });
+    res.status(200).json({ matchScores });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching match scores", error: error.message });
+    res.status(500).json({ message: "Error fetching portfolio match scores", error: error.message });
   }
 });
 

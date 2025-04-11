@@ -108,7 +108,6 @@ router.post("/sell-portfolio", authMiddleware, async(req, res) => {
     
         const userId = req.user.userId;
         const user = await User.findById(userId).select("-password");
-        console.log(user);
         
     
         if (!user) {
@@ -125,7 +124,6 @@ router.post("/sell-portfolio", authMiddleware, async(req, res) => {
         
         // Find the portfolio item
         const portfolioIndex = user.portfolio.findIndex(item => item.playerId.toString() === playerId.toString());
-        console.log(portfolioIndex);
         
         
         if (portfolioIndex === -1) {
