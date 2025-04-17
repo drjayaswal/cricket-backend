@@ -12,6 +12,7 @@ const UserSchema = new mongoose.Schema({
 
   profileImage: { type: String },
   amount: { type: String, default: 0 },
+  
   // User Portfolio Schema
   portfolio: [
     {
@@ -26,14 +27,9 @@ const UserSchema = new mongoose.Schema({
           quantity: { type: Number }, // Number of stocks bought/sold
           price: { type: Number }, // Price per stock at transaction time
           timestamp: { type: Date, default: Date.now }, // When the transaction occurred
-          runs: { type: Number }, // Player's runs at transaction time
         },
       ],
       currentHoldings: { type: Number }, // Current number of stocks held
-      averageBuyPrice: { type: Number }, // Average price of stocks purchased
-      initialInvestment: { type: Number }, // Total money invested initially
-      currentValue: { type: Number }, // Current value of holdings
-      profit: { type: Number }, // Current profit/loss
     },
   ],
 });
