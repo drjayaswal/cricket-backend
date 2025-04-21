@@ -33,6 +33,27 @@ const UserSchema = new mongoose.Schema({
       ],
       currentHoldings: { type: Number }, // Current number of stocks held
     },
+  ],
+  // teamportfolio
+
+  teamPortfolio: [
+    {
+      matchId: { type: String },
+      teamId: { type: String }, // A unique identifier for the team
+      teamName: { type: String },
+      initialPrice: { type: String },
+      transactions: [
+        {
+          type: { type: String, enum: ["buy", "sell"] },
+          quantity: { type: Number },
+          price: { type: Number },
+          timestamp: { type: Date, default: Date.now },
+          autoSold: { type: Boolean, default: false },
+          reason: { type: String }
+        },
+      ],
+      currentHoldings: { type: Number },
+    },
   ]
 });
 

@@ -6,32 +6,47 @@ const activePortfolioMatches = new Map(); // matchId => interval
 
 export async function startTrackingUserPortfolioMatches() {
   try {
-    // Fetch all users who have portfolios
-    const users = await User.find({ "portfolio.0": { $exists: true } });
-    console.log(`Found ${users.length} users with portfolios`);
-
     // Create a map to track matches that still have active positions
     const matchesWithActiveHoldings = new Map(); // matchId => hasActiveHoldings
     
-    // Process each user's portfolio
+    // Find users who have either a player portfolio or team portfolio
+    const users = await User.find({
+      $or: [
+        { "portfolio.0": { $exists: true } },
+        { "teamPortfolio.0": { $exists: true } }
+      ]
+    });
+    
+    console.log(`Found ${users.length} users with portfolios`);
+    
+    // Process each user's portfolios
     users.forEach((user) => {
-      // Check each portfolio item
-      user.portfolio.forEach((item) => {
-        // Debug output to check the currentHoldings value
-        console.log(`User ${user._id} - Match ${item.matchId} - Holdings: ${item.currentHoldings}`);
-        
-        // Make sure currentHoldings is treated as a number and explicitly check > 0
-        const holdings = Number(item.currentHoldings);
-        if (!isNaN(holdings) && holdings > 0) {
-          console.log(`Adding active match: ${item.matchId} with holdings: ${holdings}`);
-          matchesWithActiveHoldings.set(item.matchId, true);
-        }
-      });
+      // Process player portfolio
+      if (user.portfolio && user.portfolio.length > 0) {
+        user.portfolio.forEach((item) => {
+          const holdings = Number(item.currentHoldings);
+          if (!isNaN(holdings) && holdings > 0) {
+            console.log(`Adding active match from user ${user._id}'s player portfolio: ${item.matchId} with holdings: ${holdings}`);
+            matchesWithActiveHoldings.set(item.matchId, true);
+          }
+        });
+      }
+      
+      // Process team portfolio
+      if (user.teamPortfolio && user.teamPortfolio.length > 0) {
+        user.teamPortfolio.forEach((item) => {
+          const holdings = Number(item.currentHoldings);
+          if (!isNaN(holdings) && holdings > 0) {
+            console.log(`Adding active match from user ${user._id}'s team portfolio: ${item.matchId} with holdings: ${holdings}`);
+            matchesWithActiveHoldings.set(item.matchId, true);
+          }
+        });
+      }
     });
     
     // Get array of match IDs that have active holdings
     const matchIds = [...matchesWithActiveHoldings.keys()];
-    console.log("Tracking matchIds from user portfolios with active holdings:", matchIds);
+    console.log("Tracking matchIds from portfolios with active holdings:", matchIds);
 
     // Skip tracking if no matches have active holdings
     if (matchIds.length === 0) {
@@ -118,16 +133,28 @@ export async function checkAndCleanupCompletedMatches() {
 // Function to check if any users have active holdings for a specific match
 export async function checkActiveHoldingsForMatch(matchId) {
   try {
-    const users = await User.find({ 
-      "portfolio": { 
-        $elemMatch: { 
-          "matchId": matchId, 
-          "currentHoldings": { $gt: 0 } 
-        } 
-      } 
+    const usersWithActiveHoldings = await User.find({
+      $or: [
+        { 
+          "portfolio": { 
+            $elemMatch: { 
+              "matchId": matchId, 
+              "currentHoldings": { $gt: 0 } 
+            } 
+          } 
+        },
+        { 
+          "teamPortfolio": { 
+            $elemMatch: { 
+              "matchId": matchId, 
+              "currentHoldings": { $gt: 0 } 
+            } 
+          } 
+        }
+      ]
     });
     
-    return users.length > 0;
+    return usersWithActiveHoldings.length > 0;
   } catch (err) {
     console.error(`Error checking holdings for match ${matchId}:`, err.message);
     return false;

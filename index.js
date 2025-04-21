@@ -32,8 +32,7 @@ app.use(
 // Connect to MongoDB
 
 const MONGO_URI =
-  process.env.MONGO_URI ||
-  "mongodb+srv://Erfan:ERFAN123AALAM@erfan.1vy9lat.mongodb.net/Enrolledusers?retryWrites=true&w=majority&appName=Erfan";
+  process.env.MONGO_URI 
 
 mongoose
   .connect(MONGO_URI)

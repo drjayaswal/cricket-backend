@@ -157,15 +157,15 @@ export const fetchMatchScore = async (matchId) => {
 
     const stored = await MatchScore.findOne({ matchId });
 
-    processedInnings.forEach((inn) => {
-      inn.batsmen.forEach((bat) => {
-        const previous = stored?.innings?.flatMap(i => i.batsmen)?.find(b => b.id === bat.id);
+    // processedInnings.forEach((inn) => {
+    //   inn.batsmen.forEach((bat) => {
+    //     const previous = stored?.innings?.flatMap(i => i.batsmen)?.find(b => b.id === bat.id);
 
-        if (previous && bat.dots < previous.dots) {
-          bat.dots = previous.dots;
-        }
-      });
-    });    
+    //     if (previous && bat.dots < previous.dots) {
+    //       bat.dots = previous.dots;
+    //     }
+    //   });
+    // });    
 
     const newMatchScore = {
       matchId,
@@ -178,10 +178,17 @@ export const fetchMatchScore = async (matchId) => {
 
     // Store in database - use findOneAndUpdate with new:true to return the updated document
     const storedMatchScore = await MatchScore.findOneAndUpdate(
-      { matchId },
+      { 
+        matchId,
+        $or: [
+          { responseLastUpdated: { $exists: false } },
+          { responseLastUpdated: { $lt: newMatchScore.responseLastUpdated } }
+        ]
+      },
       newMatchScore,
       { upsert: true, new: true }
     );
+    
 
     
 
