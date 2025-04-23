@@ -155,7 +155,9 @@ export const fetchMatchScore = async (matchId) => {
       powerPlayData: innings.ppData || {},
     }));
 
-    const stored = await MatchScore.findOne({ matchId });
+    // const stored = await MatchScore.findOne({ matchId });
+
+    // console.log(stored)
 
     // processedInnings.forEach((inn) => {
     //   inn.batsmen.forEach((bat) => {

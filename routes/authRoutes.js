@@ -192,7 +192,7 @@ router.post("/forgot-password/sendOtp", async (req, res) => {
 });
 
 router.post("/change-password", async (req, res) => {
-  const { mobile, oldPassword, newPassword } = req.body;
+  const { mobile, newPassword } = req.body;
 
   try {
     // Find the user by mobile number
@@ -202,10 +202,12 @@ router.post("/change-password", async (req, res) => {
     }
 
     // Check if old password is correct
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-      return res.json({ message: "Incorrect old password" });
-    }
+    // const isMatch = await bcrypt.compare(oldPassword, user.password);
+    // if (!isMatch) {
+    //   return res.json({ message: "Incorrect old password" });
+    // }
+
+    // console.log(user)
 
     // Hash the new password
     const salt = await bcrypt.genSalt(10);
