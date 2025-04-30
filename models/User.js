@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const UserSchema = new mongoose.Schema({
   name: { type: String },
@@ -13,6 +14,23 @@ const UserSchema = new mongoose.Schema({
   profileImage: { type: String },
   amount: { type: String, default: 0 },
   
+  transactions:[{
+    TID:{
+      type: String
+    },
+    amount:{
+      type: Number
+    },
+    status:{
+      type: String,
+      enum: ["Pending", "Success", "Failed"],
+      default: "Pending"
+    },
+    paymentInstrument:{
+      type:Object
+    }
+  }
+  ],
   // User Portfolio Schema
   portfolio: [
     {
