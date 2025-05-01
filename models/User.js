@@ -1,3 +1,4 @@
+import { time } from "console";
 import mongoose from "mongoose";
 import { type } from "os";
 
@@ -23,11 +24,15 @@ const UserSchema = new mongoose.Schema({
     },
     status:{
       type: String,
-      enum: ["Pending", "Success", "Failed"],
-      default: "Pending"
+      enum: ["PENDING", "SUCCESS", "FAILED"],
+      default: "PENDING"
     },
     paymentInstrument:{
       type:Object
+    },
+    time: {
+      type: Date,
+      default: Date.now()
     }
   }
   ],
