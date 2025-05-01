@@ -58,8 +58,7 @@ router.post("/start", async (req, res) => {
     await user.save();
 
     client.pay(request).then((response) => {
-      console.log("\n\n",transactionId)
-      console.log("\n\n",response.redirectUrl,"\n\n")
+      console.log("\n\n",response)
         res.status(200).json({
         userData:{
             name,
@@ -70,9 +69,8 @@ router.post("/start", async (req, res) => {
         response
         });
     });
-
 } catch (error) {
-    console.error(error)
+  throw new Error("Payment Start Error\n")
   }
 });
 
@@ -84,7 +82,7 @@ router.get("/status/:txnId",async(req,res) => {
         const user = await User.findOne({
           "transactions.TID":transactionId
         })
-        client.getOrderStatus(transactionId).then((response) => {
+        client.getOrderStatus(transactionId).then(async(response) => {
           if (response) {
             response.amount /= 100;
             response.payableAmount /= 100;
@@ -98,23 +96,24 @@ router.get("/status/:txnId",async(req,res) => {
                 split.amount /= 100;
               }
             }
-            // const user = await User.findOne()
-            // const transaction = user.transactions.find((t) => t.TID === transactionId);
-            // if(!transaction){
-            //   throw new Error("No Such Transaction");
-            // }
-            // if(response.state !== 'PENDING'){
-            //   if(response.state === 'COMPLETED'){
-            //     transaction.state = "SUCCESS";
-            //   }else{
-            //     transaction.state = "FAILED";
-            //   }
-            // }
-
-
-
+            const user = await User.findOne({"transactions.TID":transactionId})
+            if(!user){
+              throw new Error("User not found")
+            }
+            const transaction = user.transactions.find((t) => t.TID === transactionId);
+            if(!transaction){
+              throw new Error("Transaction not found");
+            }
+            if(response.state !== 'PENDING'){
+              if(response.state === 'COMPLETED'){
+                transaction.state = "SUCCESS";
+              }else{
+                transaction.state = "FAILED";
+              }
+            }
+            await user.save();
           }
-          // console.log(response)
+          console.log(response)
           // return
           return res.status(200).json({
             response
@@ -129,6 +128,7 @@ router.get("/status/:txnId",async(req,res) => {
 router.get("/statusRedirect/:txnId", async (req, res) => {
   try {
     const { txnId } = req.params;
+    console.log(txnId)
     return res.redirect(
       303,
       `${process.env.FRONTEND_URL}/payment/status/${txnId}`

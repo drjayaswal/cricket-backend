@@ -14,7 +14,8 @@ const UserSchema = new mongoose.Schema({
 
   profileImage: { type: String },
   amount: { type: String, default: 0 },
-  
+  referralCode: {type:String},
+  referredBy: {type:String},
   transactions:[{
     TID:{
       type: String

@@ -17,10 +17,13 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 const twilioClient = twilio(accountSid, authToken);
 
+const generateReferralCode = (name) => {
+  return `CRST-${name}-${Math.floor(10000 + Math.random() * 90000).toString()}`
+}
+
 // Send OTP
 router.post("/send-otp", async (req, res) => {
-  const { name, mobile } = req.body;
-
+  const { name, mobile, referredBy } = req.body;
   try {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -34,6 +37,10 @@ router.post("/send-otp", async (req, res) => {
     }
     user.name = name;
     user.otp = otp;
+    user.referralCode = generateReferralCode(user.name);
+    if(referredBy){
+      user.referredBy = referredBy
+    }
     await user.save();
 
     // Send OTP via Twilio
