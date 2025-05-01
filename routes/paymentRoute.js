@@ -33,7 +33,6 @@ router.post("/start", async (req, res) => {
     // deleteAllTransactions(mobile)
     // return
 
-
     const metaInfo = MetaInfo.builder().udf1("udf1").udf2("udf2").build();
     
     const transactionId = randomUUID();

@@ -72,6 +72,7 @@ router.post("/verify-otp", async (req, res) => {
     }
     res.json({ message: "OTP verified successfully" });
   } catch (err) {
+    await User.deleteOne({mobile})
     res.status(500).json({ message: "Error verifying OTP" });
   }
 });
@@ -99,10 +100,8 @@ router.post("/set-password", async (req, res) => {
 // Login User
 router.post("/login", async (req, res) => {
   const { mobile, password } = req.body;
-
   try {
     const user = await User.findOne({ mobile });
-
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
