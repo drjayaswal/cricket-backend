@@ -20,6 +20,9 @@ const UserSchema = new mongoose.Schema({
     TID:{
       type: String
     },
+    OID:{
+      type: String
+    },
     amount:{
       type: Number
     },
@@ -28,12 +31,9 @@ const UserSchema = new mongoose.Schema({
       enum: ["PENDING", "SUCCESS", "FAILED"],
       default: "PENDING"
     },
-    paymentInstrument:{
-      type:Object
-    },
     time: {
       type: Date,
-      default: Date.now()
+      default: Date()
     }
   }
   ],
