@@ -1,15 +1,10 @@
-import express, { response } from "express";
+import express from "express";
 import { v4 as uuidv4 } from "uuid";
-import fetch, { isRedirect } from "node-fetch";
+import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config();
-import axios from "axios";
-import { randomUUID } from "crypto";
 import User from "../models/User.js";
-import { Cashfree } from "cashfree-pg";
 import authMiddleware from "../middlewares/authMiddleware.js";
-import { load } from "@cashfreepayments/cashfree-js";
-import { error } from "console";
 
 const router = express.Router();
 
@@ -24,167 +19,215 @@ const deleteAllTransactions = async (mobile) => {
   console.log("All recent transactions are deleted");
 };
 
-// Start Payment Route
-// Start Payment Route with dynamic user data
-
+// Route: Create Order
 router.post("/create-order", authMiddleware, async (req, res) => {
   try {
     if (!req.user || !req.user.userId) {
-      return res
-        .status(401)
-        .json({ message: "Unauthorized: No user data in token" });
+      return res.status(401).json({ message: "Unauthorized: No user data in token" });
     }
+    
     const userId = req.user.userId;
     const { amount } = req.body;
+    
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
       return res.status(400).json({ error: "Invalid amount" });
     }
+    
     const user = await User.findOne({ _id: userId });
+    
     if (!user) {
-      return res.status(404).json({ error: "No user" });
+      return res.status(404).json({ error: "User not found" });
     }
-    const transactionId = `T${randomUUID()}`
+
+    const orderId = `order_${Date.now()}`;
+    const transactionId = `txn_${uuidv4()}`;
+
     user.transactions.push({
-      TID:transactionId,
-      amount:amount,
-      status:'PENDING'
-    })
-    await user.save()
-    const orderBody = {
+      TID: transactionId,
+      OID: orderId,
+      amount: amount,
+      status: "PENDING",
+    });
+
+    await user.save();
+
+    const orderRequest = {
+      order_id: orderId,
+      order_amount: amount,
       order_currency: "INR",
-      order_amount: Number(amount),
       customer_details: {
-        customer_id: user._id.toString(),
+        customer_id: user._id,
         customer_name: user.name,
-        customer_email: user.googleId,
         customer_phone: user.mobile,
       },
+      order_meta: {
+        return_url: `${FRONT}/payment/orders/${orderId}`,
+      },
     };
-    const options = {
+
+    const response = await fetch("https://sandbox.cashfree.com/pg/orders", {
       method: "POST",
       headers: {
-        "x-api-version": "2023-08-01",
+        "x-api-version": "2025-01-01",
         "x-client-id": ID,
         "x-client-secret": SECRET,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(orderBody),
-    };
-    fetch("https://sandbox.cashfree.com/pg/orders", options)
-      .then((response) => response.json())
-      .then((response) => {
-        console.log(response);
-        res.status(200).json({
-          orderId: response.order_id,
-          trxnId:transactionId,
-          orderAmount: response.order_amount,
-          createdAt: response.createdAt,
-          sessionId: response.payment_session_id,
-          customer: response.customer_details,
-        });
-      })
-      .catch((error) => {
-        res.status(999).json({ PayError: error });
+      body: JSON.stringify(orderRequest),
+    });
+
+    const result = await response.json();
+
+    if (result.order_status === "ACTIVE") {
+      res.status(200).json({
+        message: "Order created successfully",
+        orderDetails: {
+          orderId: result.order_id,
+          orderAmount: result.order_amount,
+          createdAt: result.created_at,
+          paymentSessionId: result.payment_session_id,
+        },
       });
+    } else {
+      res.status(400).json({
+        error: "Failed to create order",
+        details: result.message || "Unknown error occurred.",
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error creating order:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
-
-router.get("/create-link/:orderId/:trxnId", authMiddleware, async (req, res) => {
+// Route: Create Payment Link
+router.post("/create-link/:orderId", authMiddleware, async (req, res) => {
   try {
-    const { orderId,trxnId } = req.params;
     if (!req.user || !req.user.userId) {
-      return res
-        .status(401)
-        .json({ message: "Unauthorized: No user data in token" });
+      return res.status(401).json({ message: "Unauthorized: No user data in token" });
     }
 
     const userId = req.user.userId;
+    const { amount, purpose } = req.body;
+    const { orderId } = req.params;
+
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      return res.status(400).json({ error: "Invalid amount" });
+    }
+
     const user = await User.findOne({ _id: userId });
     if (!user) {
-      return res.status(404).json({ error: "No user" });
+      return res.status(404).json({ error: "User not found" });
     }
-    const expiryTime = new Date(Date.now() + 0.25 * 60 * 60 * 1000).toISOString();
-    const transaction = user.transactions.find((t) => t.TID == trxnId)
-    if(!transaction){
-      throw new Error("No Such Transactions");
+
+    const pendingTransaction = user.transactions.find((trxn) => trxn.OID === orderId);
+
+    if (!pendingTransaction || pendingTransaction.status !== "PENDING") {
+      return res.status(201).json({ message: "No Pending Request" });
     }
-    const linkId = "link_" + uuidv4().replace(/-/g, "").slice(0, 20);
-    const orderBody = {
+
+    const expiryTime = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+
+    const paymentLinkRequest = {
       customer_details: {
+        customer_id: `cust_${uuidv4()}`,
         customer_name: user.name,
         customer_phone: user.mobile,
       },
-      link_id: linkId,
-      link_amount: Number(transaction.amount),
-      link_auto_reminders: true,
+      link_amount: pendingTransaction.amount,
       link_currency: "INR",
-      link_purpose: "Payment for CricStock11",
       link_expiry_time: expiryTime,
-      link_notify: {
-        sms: true,
-        email: true,
-        whatsapp: false,
-      },
+      link_id: `link_${uuidv4()}`,
+      link_purpose: purpose || "Payment for services",
       link_meta: {
-        return_url: `${FRONT}/payment/status/${orderId}`,
-        upi_intent: false,
+        order_id: pendingTransaction.OID,
+        return_url: `${FRONT}/payment/status/${pendingTransaction.OID}`,
+      },
+      link_notify: {
+        send_sms: true,
+        send_email: false,
       },
     };
-    const options = {
+
+    const response = await fetch("https://sandbox.cashfree.com/pg/links", {
       method: "POST",
       headers: {
-        "x-api-version": "2022-09-01",
+        "x-api-version": "2025-01-01",
         "x-client-id": ID,
         "x-client-secret": SECRET,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(orderBody),
-    };
+      body: JSON.stringify(paymentLinkRequest),
+    });
 
-    
-    fetch("https://sandbox.cashfree.com/pg/links", options)
-    .then(async(response) => response.json())
-    .then(async (response) => {
-        transaction.time = Date()
-        if(response.link_status != 'ACTIVE'){
-          if(response.link_status == 'FAILED'){
-            transaction.status = "FAILED"
-          }
-          else{
-            transaction.status = "SUCCESS";
-          }
-        }
-        await user.save()
-        console.log(response);
-        res.redirect(303,`${response.link_url}`)
-      })
-      .catch((error) => {
-        res.status(999).json({ payError: error });
+    const result = await response.json();
+
+    if (result.link_status === "ACTIVE") {
+      res.status(200).json({
+        message: "Payment link created successfully",
+        linkDetails: {
+          paymentLink: result.link_url,
+          linkExpiry: result.link_expiry_time,
+          linkId: result.link_id,
+          orderId: pendingTransaction.OID,
+        },
       });
+    } else {
+      res.status(400).json({
+        error: "Failed to create payment link",
+        details: result.message || "Unknown error occurred.",
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error creating payment link:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
+// Route: Check Order Status
+router.get("/check-order/:order_id", async (req, res) => {
+  try {
+    const { order_id } = req.params;
 
-// Redirect Route
-router.get("/statusRedirect/:txnId", async (req, res) => {
-  res.status(999).json({ message: "Redirect" });
-  // try {
-  //   const { txnId } = req.params;
-  //   console.log(txnId)
-  //   return res.redirect(
-  //     303,
-  //     `${process.env.FRONTEND_URL}/payment/status/${txnId}`
-  //   );
-  // } catch (error) {
-  //   return res.status(500).json({
-  //     success: false,
-  //     message: "Failed to redirect",
-  //     error: error.response?.data || error.message,
-  //   });
-  // }
+    if (!order_id) {
+      return res.status(400).json({ error: "Order ID is required" });
+    }
+
+    console.log("Checking Order ID:", order_id);
+
+    const response = await fetch(`https://sandbox.cashfree.com/pg/orders/${order_id}`, {
+      method: "GET",
+      headers: {
+        "x-api-version": "2025-01-01",
+        "x-client-id": ID,
+        "x-client-secret": SECRET,
+      },
+    });
+
+    const result = await response.json();
+
+    console.log("Cashfree API Response:", result);
+
+    if (result.order_status) {
+      res.status(200).json({
+        message: "Order status fetched successfully",
+        orderStatus: result.order_status,
+        receiptDetails: {
+          orderId: result.order_id,
+          amount: result.order_amount,
+          currency: result.order_currency,
+          createdAt: result.created_at,
+          customerName: result.customer_details.customer_name,
+          paymentSessionId: result.payment_session_id,
+        },
+      });
+    } else {
+      res.status(400).json({
+        error: "Failed to fetch order status",
+        details: result.message || "Unknown error occurred.",
+      });
+    }
+  } catch (error) {
+    console.error("Error checking order status:", error);
+    res.status(500).json({ error: "Server error" });
+  }
 });
-
 export default router;
