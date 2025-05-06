@@ -1,32 +1,34 @@
 import { time } from "console";
 import mongoose from "mongoose";
-import { type } from "os";
 
 const UserSchema = new mongoose.Schema({
   name: { type: String },
   mobile: { type: String, unique: true },
-  otp: { type: String },
-  isVerified: { type: Boolean, default: false },
+  // otp: { type: String },
+  // isVerified: { type: Boolean, default: false },
+  // isAdmin: { type: Boolean, default: false },
   password: { type: String },
 
   googleId: { type: String, unique: true, sparse: true },
   email: { type: String, unique: true, sparse: true },
 
+  lastSeen: { type: Date, default: Date.now() },
+
   profileImage: { type: String },
   amount: { type: String, default: 0 },
-  referralCode: {type:String},
-  referredBy: {type:String},
-  transactions:[{
-    TID:{
+  referralCode: { type: String },
+  referredBy: { type: String },
+  transactions: [{
+    TID: {
       type: String
     },
-    OID:{
+    OID: {
       type: String
     },
-    amount:{
+    amount: {
       type: Number
     },
-    status:{
+    status: {
       type: String,
       enum: ["PENDING", "SUCCESS", "FAILED"],
       default: "PENDING"
@@ -81,5 +83,16 @@ const UserSchema = new mongoose.Schema({
   ]
 });
 
+const OtpRequestSchema = new mongoose.Schema({
+  phone: { type: String, unique: true },
+  otp: { type: String },
+
+  // expiresAt: ISODate,
+  // attempts: 0,
+  // createdAt: ISODate
+})
+
 const User = mongoose.model("User", UserSchema);
-export default User;
+const OtpRequest = mongoose.model("OTPrequest", OtpRequestSchema);
+
+export { User, OtpRequest };

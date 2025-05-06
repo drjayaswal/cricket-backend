@@ -1,11 +1,12 @@
 import express from "express";
-import User from "../models/User.js";
+import { User, OtpRequest } from "../models/User.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import twilio from "twilio";
 import dotenv from "dotenv";
 import { OAuth2Client } from "google-auth-library";
 import authMiddleware from "../middlewares/authMiddleware.js";
+import { findUserByPhone, findOtpByPhone, createNewUser } from "../services/actions.js";
 
 dotenv.config();
 
@@ -24,78 +25,104 @@ const generateReferralCode = (name) => {
 // Send OTP
 router.post("/send-otp", async (req, res) => {
   const { name, mobile, referredBy } = req.body;
+
+  // Validate mobile number is provided
+  if (!mobile) {
+    return res.status(400).json({ message: "Mobile number is required" });
+  }
+
   try {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const gen_otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    let user = await User.findOne({ mobile });
-    if (user) {
-      return res.json({ message: "User already exist" });
+    let result = await findUserByPhone(mobile);
+    // console.log("User data:", user);
+    if (result.success) {
+      res.status(409).json({ message: "User already exists" });
+      return
+    }
+    let data = await findOtpByPhone(mobile)
+    if (data.code === 200) {
+      let result = await OtpRequest.deleteOne({ phone: mobile })
+      if (result.deletedCount > 0) {
+        console.log("Deleted existing OTP record");
+      }
     }
 
-    if (!user) {
-      user = new User({ name, mobile });
-    }
-    user.name = name;
-    user.otp = otp;
-    user.referralCode = generateReferralCode(user.name);
-    if(referredBy){
-      user.referredBy = referredBy
-    }
-    await user.save();
-
-    // Send OTP via Twilio
-    const message = await twilioClient.messages.create({
-      body: `Your OTP is: ${otp}`,
-      from: twilioNumber,
-      to: mobile,
+    // Save new OTP record
+    const otp = new OtpRequest({
+      name,
+      phone: mobile,
+      otp: "1234"
     });
 
-    res.json({ message: "OTP sent successfully" });
+    await otp.save();
+
+    const formattedMobile = mobile.startsWith('+91') ? mobile : `+91${mobile}`;
+    // Send OTP via Twilio
+    // const message = await twilioClient.messages.create({
+    //   body: `Your OTP is: ${gen_otp}`,
+    //   from: twilioNumber,
+    //   to: formattedMobile // Use formatted number
+    // });
+
+    res.status(200).json({ message: "OTP sent successfully" });
+
   } catch (err) {
-    res.status(500).json({ message: "Error sending OTP" });
+    console.error("Error sending OTP:", err);
+    res.status(500).json({
+      message: "Error sending OTP",
+      error: err.message,
+      details: "Please ensure mobile number is in correct format (+[country code][number])"
+    });
   }
 });
 
 // Verify OTP
 router.post("/verify-otp", async (req, res) => {
-  const { mobile, otp } = req.body;
+  const { name, mobile, password, otp } = req.body;
+  console.log("Received Data:", name, mobile, password, otp); // ✅ Check what is actually coming in
 
   try {
-    const user = await User.findOne({ mobile });
+    const data = await OtpRequest.findOne({ phone: mobile });
 
-    if (!user || user.otp !== otp) {
+    if (!data || data.otp != otp) {
       return res.status(400).json({ message: "Invalid OTP" });
-    } else {
-      user.isVerified = true;
-      user.otp = null;
-      await user.save();
     }
-    res.json({ message: "OTP verified successfully" });
+
+    // create a new user after verifying the OTP
+    console.log("creating new user...")
+    const newUser = await createNewUser(name, mobile, password)
+
+    if (newUser.success) {
+      res.status(201).json({ message: "OTP verified and NEW USER created successfully" });
+    } else {
+      res.status(newUser.code).json({ message: "Error Inserting New User" });
+    }
+
   } catch (err) {
-    await User.deleteOne({mobile})
     res.status(500).json({ message: "Error verifying OTP" });
   }
 });
 
 // Set Password
-router.post("/set-password", async (req, res) => {
-  const { mobile, password } = req.body;
-
-  try {
-    const user = await User.findOne({ mobile });
-    if (!user || !user.isVerified) {
-      return res.status(400).json({ message: "User not verified" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword;
-    await user.save();
-
-    res.json({ message: "Password set successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Error setting password" });
-  }
-});
+// router.post("/set-password", async (req, res) => {
+//   const { mobile, password } = req.body;
+//
+//   try {
+//     const user = await User.findOne({ mobile });
+//     if (!user || !user.isVerified) {
+//       return res.status(400).json({ message: "User not verified" });
+//     }
+//
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     user.password = hashedPassword;
+//     await user.save();
+//
+//     res.json({ message: "Password set successfully" });
+//   } catch (err) {
+//     res.status(500).json({ message: "Error setting password" });
+//   }
+// });
 
 // Login User
 router.post("/login", async (req, res) => {
@@ -115,6 +142,7 @@ router.post("/login", async (req, res) => {
       expiresIn: "7d",
     });
 
+    user.isLoggedIn = true;
     res.json({ token, message: "Login successful" });
   } catch (err) {
     res.status(500).json({ message: "Error logging in" });
@@ -229,6 +257,7 @@ router.post("/change-password", async (req, res) => {
 });
 
 router.get("/user", authMiddleware, async (req, res) => {
+  console.log("/user invoked", req)
   try {
     if (!req.user || !req.user.userId) {
       return res
@@ -280,7 +309,7 @@ router.post("/verify-mobile", authMiddleware, async (req, res) => {
 
     res.json({ message: "OTP sent succesfully" });
   } catch (err) {
-   
+
     res.status(500).json({ message: "Error Sending otp" });
   }
 });
@@ -297,7 +326,7 @@ router.post("/verify-mobile-otp", authMiddleware, async (req, res) => {
     }
 
     const { otp, mobile } = req.body;
-    
+
     if (!otp || !mobile) {  // ✅ Ensure both values exist
       return res.status(400).json({ message: "OTP and mobile are required" });
     }

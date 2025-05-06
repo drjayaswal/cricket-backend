@@ -3,6 +3,7 @@ import { MatchSchedule } from '../models/MatchSchedule.js';
 import axios from 'axios';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
+import { deleteOldOtpRequests } from '../services/actions.js';
 
 const router = express.Router();
 
@@ -55,6 +56,7 @@ const fetchAndStoreAllMatches = async () => {
 cron.schedule('5 0 * * *', () => {
   console.log('⏰ Running scheduled job to fetch and store matches...');
   fetchAndStoreAllMatches();
+  deleteOldOtpRequests();
 });
 
 
@@ -62,16 +64,16 @@ cron.schedule('5 0 * * *', () => {
 router.get('/matches-count', async (req, res) => {
   try {
     const matchCount = await MatchSchedule.countDocuments();
-    
+
     res.status(200).json({
       message: 'Total matches count retrieved',
       count: matchCount
     });
   } catch (error) {
     console.error('Error counting matches:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to count matches',
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -80,16 +82,16 @@ router.get('/matches-count', async (req, res) => {
 router.get('/all-stored-matches', async (req, res) => {
   try {
     const storedMatches = await MatchSchedule.find({});
-    
+
     res.status(200).json({
       message: 'All stored matches retrieved',
       matches: storedMatches
     });
   } catch (error) {
     console.error('Error retrieving stored matches:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to retrieve stored matches',
-      error: error.message 
+      error: error.message
     });
   }
 });
