@@ -19,7 +19,7 @@ const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 const twilioClient = twilio(accountSid, authToken);
 
 const generateReferralCode = (name) => {
-  return `CRST-${name.split(' ')[0]}-${Math.floor(10000 + Math.random() * 90000).toString()}`
+  return `CRST-${name.split(' ')[0].slice(0,3)}-${Math.floor(10000 + Math.random() * 90000).toString()}`
 }
 
 // Send OTP
