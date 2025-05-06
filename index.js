@@ -52,7 +52,7 @@ import { startTrackingUserPortfolioMatches } from "./MatchPortfolioTracker/Match
 app.use("/auth", authRoutes);
 app.use("/matches", matchRoutes);
 app.use("/match-scores", matchScores);
-app.use("/api", uploadRoutes);
+app.use("/upload", uploadRoutes);
 app.use("/portfolio", portfolioRoute);
 app.use("/payment", paymentRoute);
 

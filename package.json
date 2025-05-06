@@ -7,7 +7,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "bun index.js"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.772.0",
