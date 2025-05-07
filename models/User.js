@@ -6,7 +6,7 @@ const UserSchema = new mongoose.Schema({
   mobile: { type: String, unique: true },
   // otp: { type: String },
   // isVerified: { type: Boolean, default: false },
-  // isAdmin: { type: Boolean, default: false },
+  isAdmin: { type: Boolean, default: false },
   password: { type: String },
 
   googleId: { type: String, unique: true, sparse: true },
@@ -92,7 +92,13 @@ const OtpRequestSchema = new mongoose.Schema({
   // createdAt: ISODate
 })
 
+// const AdminSchema = new mongoose.Schema({
+//   mobile: { type: String, unique: true },
+//   isVerified: { type: Boolean, default: false }
+// })
+
 const User = mongoose.model("User", UserSchema);
 const OtpRequest = mongoose.model("OTPrequest", OtpRequestSchema);
+// const Admin = mongoose.model("Admin", AdminSchema);
 
 export { User, OtpRequest };
