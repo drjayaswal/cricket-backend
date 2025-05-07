@@ -24,7 +24,8 @@ const generateReferralCode = (name) => {
 
 // Send OTP
 router.post("/send-otp", async (req, res) => {
-  const { name, mobile, referredBy } = req.body;
+  const { mobile, resetPassword } = req.body;
+  console.log("recieved data:", mobile, resetPassword)
 
   // Validate mobile number is provided
   if (!mobile) {
@@ -34,13 +35,19 @@ router.post("/send-otp", async (req, res) => {
   try {
     const gen_otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    let result = await findUserByPhone(mobile);
-    // console.log("User data:", user);
-    if (result.success) {
-      res.status(409).json({ message: "User already exists" });
-      return
+    if (!resetPassword) {
+      let result = await findUserByPhone(mobile);
+      // console.log("User data:", user);
+      if (result.success) {
+        console.log("otp request for new user signup")
+        res.status(409).json({ message: "User already exists" });
+        return
+      }
     }
+    console.log("otp request for reset password")
+
     let data = await findOtpByPhone(mobile)
+    console.log("data: ", data)
     if (data.code === 200) {
       let result = await OtpRequest.deleteOne({ phone: mobile })
       if (result.deletedCount > 0) {
@@ -48,16 +55,19 @@ router.post("/send-otp", async (req, res) => {
       }
     }
 
+    const formattedMobile = mobile.startsWith('+91') ? mobile : `+91${mobile}`;
+    console.log("Formatted Mobile Number:", formattedMobile);
+    // console.log("checkpoint 1")
     // Save new OTP record
     const otp = new OtpRequest({
-      name,
-      phone: mobile,
-      otp: "1234"
+      phone: formattedMobile,
+      otp: gen_otp
     });
 
     await otp.save();
 
-    const formattedMobile = mobile.startsWith('+91') ? mobile : `+91${mobile}`;
+
+    // console.log("checkpoint 2")
     // Send OTP via Twilio
     // const message = await twilioClient.messages.create({
     //   body: `Your OTP is: ${gen_otp}`,
@@ -79,20 +89,37 @@ router.post("/send-otp", async (req, res) => {
 
 // Verify OTP
 router.post("/verify-otp", async (req, res) => {
-  const { name, mobile, password, otp } = req.body;
-  console.log("Received Data:", name, mobile, password, otp); // ✅ Check what is actually coming in
+  const { name, mobile, password, new_password, otp } = req.body;
+  console.log("Received Data:", name, mobile, password, new_password, otp); // ✅ Check what is actually coming in
+
+  console.log("checkpoint 1")
 
   try {
     const data = await OtpRequest.findOne({ phone: mobile });
+    console.log(data)
 
     if (!data || data.otp != otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
+    console.log("checkpoint 2")
+    if (new_password) {
+      // If the user is resetting their password
+      const user = await User.findOne({ mobile });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const hashedPassword = await bcrypt.hash(new_password, 10);
+      user.password = hashedPassword;
+      await user.save();
+
+      console.log("checkpoint 3")
+      res.status(201).json({ message: "Password reset successfully" });
+      return;
+    }
     // create a new user after verifying the OTP
     console.log("creating new user...")
     const newUser = await createNewUser(name, mobile, password)
-
     if (newUser.success) {
       res.status(201).json({ message: "OTP verified and NEW USER created successfully" });
     } else {
@@ -127,16 +154,20 @@ router.post("/verify-otp", async (req, res) => {
 // Login User
 router.post("/login", async (req, res) => {
   const { mobile, password } = req.body;
+  // console.log("/login : Received mobile number - ", mobile)
+
   try {
     const user = await User.findOne({ mobile });
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
 
-    const isMatch = bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
+
+    console.log("user id", user._id)
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
@@ -148,6 +179,40 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ message: "Error logging in" });
   }
 });
+
+
+router.get("/admin-login", async (req, res) => {
+  const authHeader = req.header("Authorization");
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Access denied. No token provided." });
+  }
+
+  try {
+    const token = authHeader.split(" ")[1];
+
+    // Verify JWT Token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    // Find user by ID in MongoDB
+    const user = await User.findOne({ _id: userId });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.isAdmin) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    res.status(200).json({ message: "Admin login successful" });
+  }
+  catch (err) {
+    console.error("❌ Error fetching user data:", err);
+    res.status(500).json({ message: "Error fetching user data" });
+  }
+}
+)
 
 router.post("/google-login", async (req, res) => {
   const { tokenId } = req.body;
@@ -257,7 +322,7 @@ router.post("/change-password", async (req, res) => {
 });
 
 router.get("/user", authMiddleware, async (req, res) => {
-  console.log("/user invoked", req)
+  // console.log("/user invoked", req)
   try {
     if (!req.user || !req.user.userId) {
       return res

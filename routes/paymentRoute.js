@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config();
-import {User} from "../models/User.js";
+import { User } from "../models/User.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -25,16 +25,16 @@ router.post("/create-order", authMiddleware, async (req, res) => {
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: "Unauthorized: No user data in token" });
     }
-    
+
     const userId = req.user.userId;
     const { amount } = req.body;
-    
+
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
       return res.status(400).json({ error: "Invalid amount" });
     }
-    
+
     const user = await User.findOne({ _id: userId });
-    
+
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
