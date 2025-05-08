@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema({
   lastSeen: { type: Date, default: Date.now() },
 
   profileImage: { type: String },
-  amount: { type: String, default: 0 },
+  amount: { type: Number, default: 0 },
 
   referredBy: { type: String},
   referralCodes: { type: [String], default: [] },

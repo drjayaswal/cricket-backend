@@ -104,7 +104,7 @@ const createNewUser = async (name, mobile, password, referralCode) => {
         referredBy: referralCode,
         referralCodes: [],
       });
-    }else{
+    } else {
       newUser = new User({
         name,
         mobile,
@@ -124,21 +124,26 @@ const findReferral = async (referralCode) => {
   try {
     const phone = `+${decrypt(referralCode.split("-")[1])}`;
 
-    const user = await User.findOne({ mobile: phone, referralCodes: referralCode });
+    const user = await User.findOne({
+      mobile: phone,
+      referralCodes: referralCode,
+    });
 
     if (!user) {
       console.log("No user found with this referral code");
-      return { success: false, message: "User not found or referral code does not exist" };
+      return {
+        success: false,
+        message: "User not found or referral code does not exist",
+      };
     }
 
     await User.updateOne(
       { mobile: phone },
-      { $pull: { referralCodes: referralCode },
-      $inc: { totalReferrals: 1 } }
+      { $pull: { referralCodes: referralCode }, $inc: { totalReferrals: 1 } }
     );
-    
+
     console.log("Referral code removed and totalReferrals incremented");
-    return true
+    return true;
   } catch (err) {
     return { success: false, message: "Server error", error: err };
   }
@@ -154,4 +159,34 @@ const deleteOldOtpRequests = async () => {
   }
 };
 
-export { findUserByPhone, findOtpByPhone, createNewUser, deleteOldOtpRequests };
+const deleteOldReferrals = async () => {
+  try {
+    await User.updateMany({}, { $unset: { referralCodes: [] } });
+    console.log(`Deleted all users with no referral codes in the DB`);
+  } catch (error) {
+    console.error("Error deleting old OTP requests:", error);
+  }
+};
+
+// utils/paymentHelpers.js
+function isTransactionTimedOut(transactionTime) {
+  const now = Date.now();
+  return now - new Date(transactionTime).getTime() > 3 * 60 * 1000;
+}
+
+function mapCashfreeStatus(cfStatus, isTimeout) {
+  if (cfStatus === "PAID") return "SUCCESS";
+  if (cfStatus === "ACTIVE") return isTimeout ? "FAILED" : "PENDING";
+  return "FAILED";
+}
+
+export {
+  findUserByPhone,
+  findOtpByPhone,
+  createNewUser,
+  deleteOldOtpRequests,
+  deleteOldReferrals,
+  mapCashfreeStatus,
+  isTransactionTimedOut
+};
+
