@@ -136,13 +136,11 @@ router.get("/check-order/:order_id", authMiddleware, async (req, res) => {
     const transactionTime = new Date(transaction.time).getTime();
     const now = Date.now();
 
-    let forceFailDueToTimeout = false;
     if (
       (transaction.status === "PENDING" &&
         now - transactionTime > 3 * 60 * 1000) ||
       transaction.status == "FAILED"
     ) {
-      forceFailDueToTimeout = true;
       return res.status(200).json({
         status: "FAILED",
         reason:
@@ -171,30 +169,25 @@ router.get("/check-order/:order_id", authMiddleware, async (req, res) => {
         .status(400)
         .json({ error: result.message || "Unable to fetch order details." });
     }
-
-    const cfStatus = result.order_status;
-    let updatedStatus = transaction.status;
-
-    if (cfStatus === "PAID") {
-      updatedStatus = "SUCCESS";
-    } else if (cfStatus === "ACTIVE") {
-      updatedStatus = forceFailDueToTimeout ? "FAILED" : "PENDING";
-    } else {
-      updatedStatus = "FAILED";
+    console.log(result);
+    if (result.order_status == "PAID") {
+      if (transaction.status == "PENDING") {
+        user.amount = user.amount + transaction.amount;
+        transaction.status = "SUCCESS";
+        await user.save();
+        return res.status(201).json({
+          status: transaction.status,
+          orderDetails: result,
+          transaction,
+        });
+      } else {
+        return res.status(200).json({
+          status: transaction.status,
+          orderDetails: result,
+          transaction,
+        });
+      }
     }
-
-    // Only update if changed
-    if (transaction.status !== updatedStatus) {
-      transaction.status = updatedStatus;
-
-    }
-    user.amount = user.amount + transaction.amount ;
-    await user.save();
-    return res.status(200).json({
-      status: transaction.status,
-      orderDetails: result,
-      transaction,
-    });
   } catch (error) {
     console.error("Error checking order status:", error);
     res.status(500).json({ error: "Server error" });
