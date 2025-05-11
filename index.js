@@ -29,6 +29,8 @@ app.use(
   })
 );
 
+
+
 // Connect to MongoDB
 
 const MONGO_URI =
@@ -46,6 +48,7 @@ import matchScores from "./routes/matchScores.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import portfolioRoute from "./routes/portfolioRoute.js";
 import paymentRoute from "./routes/paymentRoute.js"
+import emailService from "./routes/emailSevice.js";
 import { startTrackingUserPortfolioMatches } from "./MatchPortfolioTracker/MatchPortfolioTracker.js";
 
 // Define Routes
@@ -55,6 +58,7 @@ app.use("/match-scores", matchScores);
 app.use("/upload", uploadRoutes);
 app.use("/portfolio", portfolioRoute);
 app.use("/payment", paymentRoute);
+app.use("/api", emailService);
 
 // Root Route
 app.get("/", (req, res) => {
