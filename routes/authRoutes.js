@@ -19,7 +19,7 @@ const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 const twilioClient = twilio(accountSid, authToken);
 
 const generateReferralCode = (name) => {
-  return `CRST-${name.split(' ')[0].slice(0,3)}-${Math.floor(10000 + Math.random() * 90000).toString()}`
+  return `CRST-${name.split(' ')[0].slice(0, 3)}-${Math.floor(10000 + Math.random() * 90000).toString()}`
 }
 
 // Send OTP
@@ -206,6 +206,7 @@ router.get("/admin-login", async (req, res) => {
     }
 
     res.status(200).json({ message: "Admin login successful" });
+    return
   }
   catch (err) {
     console.error("❌ Error fetching user data:", err);
@@ -348,16 +349,20 @@ router.get("/user", authMiddleware, async (req, res) => {
 
 // For the user who logged in using Google SignIn
 router.post("/verify-mobile", authMiddleware, async (req, res) => {
+
+  console.log("verify mobile request recieved:")
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId);
 
     if (!user) {
+      console.log("user :", user)
       return res.status(404).json({ message: "User not found" });
     }
     const { mobile } = req.body;
 
     if (!mobile) {
+      console.log("mobile :", mobile)
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
@@ -366,6 +371,7 @@ router.post("/verify-mobile", authMiddleware, async (req, res) => {
     user.otp = otp;
     await user.save();
 
+    console.log("checkpoint",)
     const message = await twilioClient.messages.create({
       body: `Your OTP is: ${otp}`,
       from: twilioNumber,

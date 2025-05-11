@@ -1,5 +1,6 @@
 // find user by transactionId
 import { OtpRequest, User } from "../models/User.js";
+import Admin from "../models/Admin.js";
 import bcrypt from "bcryptjs";
 
 const findUserByPhone = async (phone) => {
@@ -69,5 +70,40 @@ const deleteOldOtpRequests = async () => {
   }
 }
 
+const checkIsSuperAdmin = async (id) => {
+  try {
+    const admin = await User.findOne({ _id: id });
+    if (!admin) {
+      return { success: false, code: 404, message: "No Such Admin Exists" };
+    }
+    if (admin.isAdmin && admin.role !== "super_admin") {
+      return { success: false, code: 403, message: "Not A Super Admin" };
+    }
 
-export { findUserByPhone, findOtpByPhone, createNewUser, deleteOldOtpRequests }
+    return { success: true, code: 200, data: admin };
+  } catch (error) {
+    console.error("Error deleting old OTP requests:", error);
+    return { success: false, code: 500, message: "Error deleting old OTP requests" };
+  }
+}
+
+const findAdminById = async (id) => {
+  try {
+    const admin = await User.findOne({ _id: id })
+    if (!admin) {
+      return { success: false, code: 404, message: "No such user in the database" };
+    }
+    if (admin.isAdmin) {
+      return { success: false, code: 403, message: "Not an Admin" };
+    }
+    return { success: true, code: 200, data: admin };
+  }
+  catch (error) {
+    console.error("Error finding admin by phone:", error);
+    return { success: false, code: 500, message: "Error finding admin by phone" };
+  }
+}
+
+
+
+export { findUserByPhone, findOtpByPhone, createNewUser, deleteOldOtpRequests, checkIsSuperAdmin, findAdminById }
