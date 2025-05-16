@@ -28,6 +28,24 @@ router.get("/fetch-and-store-all", async (req, res) => {
   }
 });
 
+router.get("/get-score/:matchId", async (req, res) => {
+  const {matchId} = req.params;
+  if (!matchId) {
+    return res.status(400).json({ error: "matchId is required" });
+  }
+  
+  try {
+    const response = await axios.get(
+      `https://cricbuzz-cricket.p.rapidapi.com/mcenter/v1/${matchId}/hscard`,
+      { headers: rapidAPIHeaders }
+    );
+    const data = await response.data;
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching match scores:", error.message);
+    res.status(500).json({ error: "Failed to fetch match scores" });
+  }
+});
 const fetchAndStoreAllMatches = async () => {
   try {
     const response = await axios.get(

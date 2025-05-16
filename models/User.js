@@ -19,24 +19,32 @@ const UserSchema = new mongoose.Schema({
   referredBy: { type: String},
   referralCodes: { type: [String], default: [] },
   totalReferrals: {type: Number},
-  
+
   transactions: [
     {
-      TID: {
+      txnID: {
         type: String,
       },
-      OID: {
-        type: String,
-      },
-      amount: {
+      // OID: {
+      //   type: String,
+      // },
+      txnAmount: {
         type: Number,
       },
-      status: {
+      txnStatus: {
         type: String,
-        enum: ["PENDING", "SUCCESS", "FAILED"],
-        default: "PENDING",
+        enum: ["Pending", "Completed", "Failed"],
+        default: "Pending",
       },
-      time: {
+      txnType:{
+        type:String,
+        enum: ["Deposit", "Withdrawal"],
+      },
+      txnPaymentMethod:{
+        type:String,
+        enum: ["BT", "UPI", "NB", "CC", "DC"]
+      },
+      txnDate: {
         type: Date,
         default: Date(),
       },
