@@ -8,7 +8,7 @@ const UserSchema = new mongoose.Schema({
   password: { type: String },
 
   isAdmin: { type: Boolean, default: false },
-  role: { type: String, enum: ["marketing", "financial", "super_admin"], default: "" },
+  role: { type: String, enum: ["marketing", "financial", "super_admin", ""], default: "" },
 
   googleId: { type: String, unique: true, sparse: true },
   email: { type: String, unique: true, sparse: true },

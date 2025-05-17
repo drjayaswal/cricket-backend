@@ -89,8 +89,8 @@ router.post("/send-otp", async (req, res) => {
 
 // Verify OTP
 router.post("/verify-otp", async (req, res) => {
-  const { name, mobile, password, new_password, otp } = req.body;
-  console.log("Received Data:", name, mobile, password, new_password, otp); // ✅ Check what is actually coming in
+  const { name, mobile, email, password, new_password, otp } = req.body;
+  // console.log("Received Data:", name, mobile, password, new_password, otp); // ✅ Check what is actually coming in
 
   console.log("checkpoint 1")
 
@@ -119,7 +119,7 @@ router.post("/verify-otp", async (req, res) => {
     }
     // create a new user after verifying the OTP
     console.log("creating new user...")
-    const newUser = await createNewUser(name, mobile, password)
+    const newUser = await createNewUser(name, mobile, email, password)
     if (newUser.success) {
       res.status(201).json({ message: "OTP verified and NEW USER created successfully" });
     } else {
@@ -340,7 +340,7 @@ router.get("/user", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ user });
+    res.status(200).json({ user });
   } catch (err) {
     console.error("❌ Error fetching user data:", err);
     res.status(500).json({ message: "Error fetching user data" });
@@ -350,70 +350,74 @@ router.get("/user", authMiddleware, async (req, res) => {
 // For the user who logged in using Google SignIn
 router.post("/verify-mobile", authMiddleware, async (req, res) => {
 
-  console.log("verify mobile request recieved:")
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId);
 
     if (!user) {
-      console.log("user :", user)
       return res.status(404).json({ message: "User not found" });
     }
     const { mobile } = req.body;
 
     if (!mobile) {
-      console.log("mobile :", mobile)
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    user.otp = otp;
-    await user.save();
+    await OtpRequest.findOneAndUpdate(
+      { phone: mobile },
+      {
+        $set: { otp } // Fields to update or set
+      },
+      {
+        upsert: true,        // Create if not exists
+        new: true,           // Return the updated or new document
+        setDefaultsOnInsert: true // Apply schema defaults when inserting
+      }
+    );
 
-    console.log("checkpoint",)
     const message = await twilioClient.messages.create({
       body: `Your OTP is: ${otp}`,
       from: twilioNumber,
       to: mobile,
     });
 
-    res.json({ message: "OTP sent succesfully" });
+    res.status(200).json({ message: "OTP sent succesfully" });
   } catch (err) {
-
     res.status(500).json({ message: "Error Sending otp" });
   }
 });
 
 router.post("/verify-mobile-otp", authMiddleware, async (req, res) => {
   try {
-    console.log("Received Data:", req.body); // ✅ Check what is actually coming in
+    const { otp, phone } = req.body;
+    if (!otp || !phone) {  // ✅ Ensure both values exist
+      return res.status(400).json({ message: "OTP and mobile are required" });
+    }
 
-    const userId = req.user.userId;
-    const user = await User.findById(userId);
+    const userOtp = await OtpRequest.findOne({ phone });
+    if (!userOtp) {
+      return res.status(404).json({ message: "OTP not found" });
+    }
 
+    if (userOtp.otp != otp) { // ✅ Ensure correct comparison
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    console.log("userId :", req.user.userId)
+    const user = await User.findOne({ _id: req.user.userId });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const { otp, mobile } = req.body;
+    console.log("user :", user)
+    // user.mobile = phone;
+    // user.isVerified = true;
+    // await user.save();
 
-    if (!otp || !mobile) {  // ✅ Ensure both values exist
-      return res.status(400).json({ message: "OTP and mobile are required" });
-    }
+    res.status(200).json({ message: "Phone verified successfully" });
 
-    console.log(`Stored OTP: ${user.otp}, Received OTP: ${otp}`); // ✅ Log comparison values
-
-    if (user.otp.toString() !== otp.toString()) { // ✅ Ensure correct comparison
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
-
-    user.mobile = mobile;
-    user.isVerified = true;
-    user.otp = null;
-    await user.save();
-
-    res.json({ message: "Phone verified successfully" });
   } catch (err) {
     console.error("❌ Error verifying OTP:", err);
     res.status(500).json({ message: "Error verifying OTP" });

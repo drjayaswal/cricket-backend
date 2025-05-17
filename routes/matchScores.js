@@ -195,6 +195,7 @@ export const fetchMatchScore = async (matchId) => {
 
 
     io.to(matchId).emit("scoreUpdate", storedMatchScore);
+    console.log("storedMatchScore :", storedMatchScore)
     console.log(`Broadcasting update for match ${matchId}`);
 
     return storedMatchScore;
@@ -296,18 +297,22 @@ export function setupSocketConnections() {
 
         // Match is already live – start fetching now
         if (!activeMatches.has(matchId)) {
+          console.log(`chekpoint 1`);
           const interval = setInterval(() => {
             fetchMatchScore(matchId);
+            console.log(`chekpoint 2`);
           }, 1500);
           activeMatches.set(matchId, { interval, subscribers: 1 });
           console.log(`Interval started for live match ${matchId}`);
         } else {
+          console.log(`chekpoint 3`);
           const matchData = activeMatches.get(matchId);
           matchData.subscribers += 1;
           activeMatches.set(matchId, matchData);
           console.log(`Match ${matchId} now has ${matchData.subscribers} subscribers`);
         }
       });
+      console.log(`chekpoint 4`);
 
 
       // Handle unsubscribe (if you have this functionality)

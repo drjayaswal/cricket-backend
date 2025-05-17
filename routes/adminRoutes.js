@@ -153,7 +153,6 @@ router.get('/user-details', async (req, res) => {
   }
 });
 
-
 router.post('/promote-user-to-admin', authMiddleware, async (req, res) => {
   const { id, role } = req.body;
   const admin_id = req.user.userId;

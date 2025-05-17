@@ -9,6 +9,8 @@ import { setupSocketConnections } from "./routes/matchScores.js";
 
 dotenv.config();
 
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+
 const app = express();
 const server = http.createServer(app);
 const io = initializeSocket(server);
@@ -17,7 +19,7 @@ const io = initializeSocket(server);
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173", // Add your frontend and backend URLs
+    origin: FRONTEND_URL, // Add your frontend and backend URLs
     methods: "GET,POST,PUT,DELETE",
     credentials: true, // Allow cookies and auth headers
   })
@@ -66,7 +68,7 @@ app.get("/", (req, res) => {
 setupSocketConnections();
 
 // Start the Server
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   startTrackingUserPortfolioMatches();
   console.log(`Server running on port ${PORT}`);

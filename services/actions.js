@@ -32,7 +32,7 @@ const findOtpByPhone = async (phone) => {
   }
 }
 
-const createNewUser = async (name, mobile, password) => {
+const createNewUser = async (name, mobile, email, password) => {
   try {
     // Check if user already exists
     let user = await findUserByPhone(mobile);
@@ -46,6 +46,7 @@ const createNewUser = async (name, mobile, password) => {
     const newUser = new User({
       name,
       mobile,
+      email,
       password: hashedPassword,
       // referredBy,
       // referralCode: generateReferralCode(name),
