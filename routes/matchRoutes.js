@@ -40,6 +40,7 @@ router.get("/get-score/:matchId", async (req, res) => {
       { headers: rapidAPIHeaders }
     );
     const data = await response.data;
+    // console.log(data)
     res.status(200).json(data);
   } catch (error) {
     console.error("Error fetching match scores:", error.message);
