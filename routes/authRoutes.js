@@ -21,6 +21,10 @@ const twilioClient = twilio(accountSid, authToken);
 const generateReferralCode = (name) => {
   return `CRST-${name.split(' ')[0].slice(0, 3)}-${Math.floor(10000 + Math.random() * 90000).toString()}`
 }
+const deleteAllReferrals = async (mobile) => {
+  await User.updateOne({ mobile }, { $set: { referralCodes: [] } });
+  console.log("All Referrals Are Refreshed");
+};
 
 // Send OTP
 router.post("/send-otp", async (req, res) => {
@@ -89,10 +93,9 @@ router.post("/send-otp", async (req, res) => {
 
 // Verify OTP
 router.post("/verify-otp", async (req, res) => {
-  const { name, mobile, email, password, new_password, otp } = req.body;
-  // console.log("Received Data:", name, mobile, password, new_password, otp); // ✅ Check what is actually coming in
 
-  console.log("checkpoint 1")
+  const { name, mobile,email, password, new_password, otp, referralCode } = req.body;
+  console.log("Received Data:", name, mobile, password, new_password, otp, referralCode);
 
   try {
     const data = await OtpRequest.findOne({ phone: mobile });
@@ -119,9 +122,11 @@ router.post("/verify-otp", async (req, res) => {
     }
     // create a new user after verifying the OTP
     console.log("creating new user...")
-    const newUser = await createNewUser(name, mobile, email, password)
+    const newUser = await createNewUser(name, mobile,email, password,referralCode);
     if (newUser.success) {
       res.status(201).json({ message: "OTP verified and NEW USER created successfully" });
+    }else if (!newUser.success && newUser.code == 403) {
+        res.status(403).json({ message: "Invalid Referral Code" });
     } else {
       res.status(newUser.code).json({ message: "Error Inserting New User" });
     }
@@ -174,6 +179,7 @@ router.post("/login", async (req, res) => {
     });
 
     user.isLoggedIn = true;
+    
     res.json({ token, message: "Login successful" });
   } catch (err) {
     res.status(500).json({ message: "Error logging in" });
@@ -424,5 +430,28 @@ router.post("/verify-mobile-otp", authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/add-referral-code',authMiddleware, async(req,res) => {
+  try {
+    if (!req.user || !req.user.userId) {
+      return res
+        .status(401)
+        .json({ message: "Unauthorized: No user data in token" });
+    }
+    const userId = req.user.userId;
+    const {referralCode} = req.body;
+    if(!referralCode){
+      res.status(404).json({ message: "No Referral Code Found" });
+    }
+    const user = await User.findOne({_id:userId});
+    if(!user){
+      res.status(404).json({ message: "No Such User Found" });
+    }
+    user.referralCodes.push(referralCode);
+    await user.save();
+    res.status(200).json({ message: "Added Referral Code" });
+  } catch (error) {
+    res.status(500).json({ message: error });
+  }
+})
 
 export default router;
