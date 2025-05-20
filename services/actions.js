@@ -1,5 +1,6 @@
 // find user by transactionId
 import { OtpRequest, User } from "../models/User.js";
+import Admin from "../models/Admin.js";
 import bcrypt from "bcryptjs";
 
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -81,7 +82,7 @@ const findOtpByPhone = async (phone) => {
   }
 };
 
-const createNewUser = async (name, mobile, password, referralCode) => {
+const createNewUser = async (name, mobile, email, password, referralCode) => {
   try {
     // Check if user already exists
     let user = await findUserByPhone(mobile);
@@ -100,6 +101,7 @@ const createNewUser = async (name, mobile, password, referralCode) => {
       newUser = new User({
         name,
         mobile,
+        email,
         password: hashedPassword,
         referredBy: referralCode,
         referralCodes: [],
@@ -108,6 +110,7 @@ const createNewUser = async (name, mobile, password, referralCode) => {
       newUser = new User({
         name,
         mobile,
+        email,
         password: hashedPassword,
         referralCodes: [],
       });
@@ -180,6 +183,41 @@ function mapCashfreeStatus(cfStatus, isTimeout) {
   return "FAILED";
 }
 
+const checkIsSuperAdmin = async (id) => {
+  try {
+    const admin = await User.findOne({ _id: id });
+    if (!admin) {
+      return { success: false, code: 404, message: "No Such Admin Exists" };
+    }
+    if (admin.isAdmin && admin.role !== "super_admin") {
+      return { success: false, code: 403, message: "Not A Super Admin" };
+    }
+
+    return { success: true, code: 200, data: admin };
+  } catch (error) {
+    console.error("Error deleting old OTP requests:", error);
+    return { success: false, code: 500, message: "Error deleting old OTP requests" };
+  }
+}
+
+const findAdminById = async (id) => {
+  try {
+    const admin = await User.findOne({ _id: id })
+    if (!admin) {
+      return { success: false, code: 404, message: "No such user in the database" };
+    }
+    if (admin.isAdmin) {
+      return { success: false, code: 403, message: "Not an Admin" };
+    }
+    return { success: true, code: 200, data: admin };
+  }
+  catch (error) {
+    console.error("Error finding admin by phone:", error);
+    return { success: false, code: 500, message: "Error finding admin by phone" };
+  }
+}
+
+
 export {
   findUserByPhone,
   findOtpByPhone,
@@ -187,6 +225,7 @@ export {
   deleteOldOtpRequests,
   deleteOldReferrals,
   mapCashfreeStatus,
-  isTransactionTimedOut
+  isTransactionTimedOut,
+  checkIsSuperAdmin,
+  findAdminById
 };
-

@@ -4,9 +4,11 @@ const UserSchema = new mongoose.Schema({
   name: { type: String },
   mobile: { type: String, unique: true },
   // otp: { type: String },
-  // isVerified: { type: Boolean, default: false },
-  isAdmin: { type: Boolean, default: false },
+  isVerified: { type: Boolean, default: false },
   password: { type: String },
+
+  isAdmin: { type: Boolean, default: false },
+  role: { type: String, enum: ["marketing", "financial", "super_admin", ""], default: "" },
 
   googleId: { type: String, unique: true, sparse: true },
   email: { type: String, unique: true, sparse: true },
@@ -51,7 +53,7 @@ const UserSchema = new mongoose.Schema({
     },
   ],
   // User Portfolio Schema
-  portfolio: [
+  playerPortfolio: [
     {
       matchId: { type: String },
       playerId: { type: String }, // Reference to the player
