@@ -5,7 +5,7 @@ import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/set-portfolio", authMiddleware, async (req, res) => {
+router.post("/store-player-portfolio", authMiddleware, async (req, res) => {
   try {
     if (!req.user || !req.user.userId) {
       return res
@@ -92,7 +92,7 @@ router.post("/set-portfolio", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/sell-portfolio", authMiddleware, async (req, res) => {
+router.post("/sell-player-portfolio", authMiddleware, async (req, res) => {
   try {
     if (!req.user || !req.user.userId) {
       return res
@@ -165,7 +165,7 @@ router.post("/sell-portfolio", authMiddleware, async (req, res) => {
 });
 
 // Get user's portfolio
-router.get("/get-portfolio", authMiddleware, async (req, res) => {
+router.get("/get-player-portfolio", authMiddleware, async (req, res) => {
   try {
     if (!req.user || !req.user.userId) {
       return res
@@ -198,8 +198,7 @@ router.get("/get-portfolio", authMiddleware, async (req, res) => {
 
 
 // routes for teamportfolio 
-
-router.post("/set-team-portfolio", authMiddleware, async (req, res) => {
+router.post("/store-team-portfolio", authMiddleware, async (req, res) => {
   try {
     if (!req.user || !req.user.userId) {
       return res

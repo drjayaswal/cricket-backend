@@ -41,7 +41,7 @@ const UserSchema = new mongoose.Schema({
   }
   ],
   // User Portfolio Schema
-  portfolio: [
+  playerPortfolio: [
     {
       matchId: { type: String },
       playerId: { type: String }, // Reference to the player
