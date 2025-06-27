@@ -19,7 +19,7 @@ const io = initializeSocket(server);
 app.use(express.json());
 app.use(
   cors({
-    origin: FRONTEND_URL, // Add your frontend and backend URLs
+    origin: "*", // Add your frontend and backend URLs
     methods: "GET,POST,PUT,DELETE",
     credentials: true, // Allow cookies and auth headers
   })
@@ -72,7 +72,7 @@ app.get("/", (req, res) => {
 setupSocketConnections();
 
 // Start the Server
-const PORT = process.env.PORT || 5000;
+const PORT = 5002;
 server.listen(PORT, () => {
   startTrackingUserPortfolioMatches();
   console.log(`Server running on port ${PORT}`);

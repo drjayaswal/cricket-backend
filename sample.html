@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Cashfree Payment</title>
+</head>
+
+<body>
+    <button id="payNow">Pay Now</button>
+
+    <script>
+        document.getElementById("payNow").addEventListener("click", async () => {
+            try {
+                const res = await fetch("http://localhost:5002/payment/create-order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                });
+
+                const data = await res.json();
+
+                if (data.payment_link) {
+                    // Option 1: Redirect to hosted page
+                    window.location.href = data.payment_link;
+
+                    // Option 2 (optional): Show QR code (you can use a QR lib or API)
+                    // Example:
+                    // document.getElementById("qrcode").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.payment_link)}`;
+                } else {
+                    alert("Failed to generate payment link.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Something went wrong.");
+            }
+        });
+    </script>
+</body>
+
+</html>
